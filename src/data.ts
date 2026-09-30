@@ -51,7 +51,7 @@ export const MAMILAS: Mamila[] = [
   },
   { 
     id: 'm5', 
-    name: 'Marhaba Fast Food & Drinks', 
+    name: 'Jijiga Express Fresh Kitchen & Food', 
     rating: 4.8, 
     location: 'Main Commercial Ave, Jijiga', 
     plusCode: '8F2P+9X', 
@@ -300,7 +300,7 @@ function generateInitialOrders(): Order[] {
     batchId: 'parcel-express',
     batchName: 'Express Parcel: Legal Certificates & Fresh Camel Spices',
     mamilaId: 'm1',
-    mamilaName: 'Marhaba Express Parcel Hub',
+    mamilaName: 'Jijiga Express Delivery Service Hub',
     mamilaLocation: 'Central Dispatch Terminal, Jijiga',
     price: 350,
     quantity: 1,
@@ -341,15 +341,15 @@ function generateInitialOrders(): Order[] {
     createdAt: pastCustomerDate4,
   });
 
-  // 6. Marhaba Taxi Ride Booking (from video at 02:06 - 02:39)
+  // 6. Jijiga Express Delivery Service: Ride Booking
   generatedOrders.push({
     id: 'ord-ride-01',
     serviceType: 'RIDE',
     batchId: 'ride-taxi',
-    batchName: 'Marhaba Taxi: Hargeisa Airport to Mansoor Hotel',
+    batchName: 'Jijiga Express Delivery Service: Airport to Central Plaza',
     mamilaId: 'm4',
-    mamilaName: 'Marhaba Ride Fleet',
-    mamilaLocation: 'Hargeisa Downtown Dispatch',
+    mamilaName: 'Jijiga Express Delivery Service Fleet',
+    mamilaLocation: 'Central Dispatch, Jijiga',
     price: 280,
     quantity: 1,
     deliveryFee: 0,

@@ -295,7 +295,7 @@ export default function App() {
                 <Package2 className="w-5 h-5 text-emerald-400" />
               </div>
               <a href="/" className="text-xl font-bold tracking-tight text-slate-900">
-                Mamila Platform
+                Jijiga Express Delivery Service
               </a>
             </div>
             

@@ -36,6 +36,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { OrderMapPreview } from '../components/map/OrderMapPreview';
 import { DeliveryLocationPickerMap } from '../components/map/DeliveryLocationPickerMap';
+import { DeliveryRouteMapBanner } from '../components/map/DeliveryRouteMapBanner';
 import { BookParcelModal } from '../components/parcel/BookParcelModal';
 import { BookRideModal } from '../components/ride/BookRideModal';
 import { BookEeuModal } from '../components/eeu/BookEeuModal';
@@ -416,7 +417,7 @@ export function CustomerView({
             </div>
             <div>
               <div className="font-bold text-xs text-slate-900">Food & Restaurant</div>
-              <div className="text-[11px] text-slate-500">Hassan Wali Hotel, Marhaba, Farms</div>
+              <div className="text-[11px] text-slate-500">Hassan Wali Hotel, Local Kitchens, Farms</div>
             </div>
           </div>
           <span className="text-amber-700 font-bold text-xs">Browse →</span>
@@ -447,7 +448,7 @@ export function CustomerView({
               🚖
             </div>
             <div>
-              <div className="font-bold text-xs text-slate-900">Marhaba Taxi & Moto</div>
+              <div className="font-bold text-xs text-slate-900">Jijiga Express Taxi & Moto</div>
               <div className="text-[11px] text-slate-500">Instant ride dispatch & airport pickup</div>
             </div>
           </div>
@@ -470,6 +471,22 @@ export function CustomerView({
           <span className="text-amber-800 font-bold text-xs">Recharge →</span>
         </div>
       </div>
+
+      {/* CORE INTEGRATION: DELIVERY ROUTE MAP & REAL-TIME COURIER TRACKING BANNER */}
+      <DeliveryRouteMapBanner
+        activeOrder={activeOrder}
+        onOpenMapModal={onOpenMapPreview}
+        onBookParcel={() => setShowBookParcelModal(true)}
+        onSimulateStep={onSimulateNextStep}
+        onOpenChat={(order) => {
+          setCommunicationTarget({
+            order,
+            role: 'RIDER',
+            name: order.riderName || 'Dawit Rider',
+            phone: order.customerPhone || '+251 91 123 4567',
+          });
+        }}
+      />
 
       {/* TAB 1: FRESH BATCHES */}
       {activeTab === 'batches' && (
@@ -874,13 +891,18 @@ export function CustomerView({
                       <div className="animate-pulse text-emerald-500 mt-1">_ executing atomic reservation...</div>
                     </div>
                   ) : (
-                    <button 
-                      onClick={handleCheckout} 
-                      className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <ShoppingBag className="w-4 h-4" />
-                      Confirm Order • {((selectedBatch.price * quantity) + (selectedCity === 'Hargeisa' ? 200 : 150))} ETB
-                    </button>
+                    <div>
+                      <button 
+                        onClick={handleCheckout} 
+                        className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        Confirm Order • {((selectedBatch.price * quantity) + (selectedCity === 'Hargeisa' ? 200 : 150))} ETB
+                      </button>
+                      <p className="text-[11px] text-slate-500 text-center font-medium mt-2">
+                        To request custom delivery features, ask support.
+                      </p>
+                    </div>
                   )}
                 </motion.div>
               ) : (
@@ -933,11 +955,14 @@ export function CustomerView({
                 </div>
 
                 {/* Instant Simulation Stepper Button for Testing */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    To request custom delivery features, ask support.
+                  </span>
                   {onSimulateNextStep && (
                     <button
                       onClick={() => onSimulateNextStep(activeOrder.id)}
-                      className="px-3.5 py-1.5 bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      className="px-3.5 py-1.5 bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
                       title="Advance order through simulation pipeline"
                     >
                       <FastForward className="w-3.5 h-3.5" />
@@ -1388,7 +1413,7 @@ export function CustomerView({
                       <div className="flex items-center justify-between font-bold text-indigo-900">
                         <span className="flex items-center gap-1.5">
                           <Bike className="w-4 h-4 text-indigo-600" />
-                          {order.rideDetails.vehicleType === 'MARHABA_TAXI' ? 'Marhaba Taxi' : 'Marhaba Moto'} • {order.rideDetails.city}
+                          {order.rideDetails.vehicleType === 'MARHABA_TAXI' ? 'Jijiga Express Taxi' : 'Jijiga Express Moto'} • {order.rideDetails.city}
                         </span>
                         <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[10px]">
                           Plate: {order.rideDetails.licensePlate || 'SL-88492'}

@@ -91,7 +91,7 @@ export function BookParcelModal({
       batchId: 'parcel-dispatch',
       batchName: `Express Parcel (${category.replace('_', ' ')}): ${senderCity} → ${receiverCity}`,
       mamilaId: 'm1',
-      mamilaName: 'Marhaba Express Parcel Hub',
+      mamilaName: 'Jijiga Express Delivery Service Hub',
       mamilaLocation: `${senderCity} Central Dispatch Terminal`,
       price: itemPrice,
       quantity: 1,
@@ -389,6 +389,11 @@ export function BookParcelModal({
                 Confirm & Dispatch Parcel
               </button>
             </div>
+          </div>
+          <div className="bg-slate-950/80 px-6 py-2 border-t border-slate-800 text-center">
+            <p className="text-[11px] text-slate-400 font-medium">
+              To request custom delivery features, ask support.
+            </p>
           </div>
         </form>
       </div>

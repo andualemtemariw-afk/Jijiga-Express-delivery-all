@@ -86,9 +86,9 @@ export function BookRideModal({
           id: 'ord-ride-' + Date.now().toString().slice(-5),
           serviceType: 'RIDE',
           batchId: 'ride-' + vehicleType.toLowerCase(),
-          batchName: `${vehicleType === 'MARHABA_TAXI' ? 'Marhaba Taxi' : 'Marhaba Moto / Bajaj'}: ${pickup.split(',')[0]} → ${dropoff.split(',')[0]}`,
+          batchName: `${vehicleType === 'MARHABA_TAXI' ? 'Jijiga Express Taxi' : 'Jijiga Express Moto / Bajaj'}: ${pickup.split(',')[0]} → ${dropoff.split(',')[0]}`,
           mamilaId: 'm4',
-          mamilaName: 'Marhaba Ride Fleet Dispatch',
+          mamilaName: 'Jijiga Express Delivery Service Fleet Dispatch',
           mamilaLocation: `${selectedCity} Fleet Hub`,
           price: tripPrice,
           quantity: 1,
@@ -131,7 +131,7 @@ export function BookRideModal({
               <Navigation className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-lg">Book Ride • Marhaba Transport</h3>
+              <h3 className="font-bold text-lg">Book Ride • Jijiga Express Delivery Service</h3>
               <p className="text-xs text-slate-400">On-demand Taxi & Moto in {selectedCity} • Fast Dispatch</p>
             </div>
           </div>
@@ -159,7 +159,7 @@ export function BookRideModal({
                 {searchStep === 1 ? 'Locating Nearby Drivers...' : 'Driver Found! Connecting...'}
               </h4>
               <p className="text-xs text-slate-500 max-w-xs mt-1">
-                Scanning verified {vehicleType === 'MARHABA_TAXI' ? 'Marhaba Taxis' : 'Marhaba Motos'} in {selectedCity}.
+                Scanning verified {vehicleType === 'MARHABA_TAXI' ? 'Jijiga Express Taxis' : 'Jijiga Express Motos'} in {selectedCity}.
               </p>
             </div>
           </div>
@@ -210,7 +210,7 @@ export function BookRideModal({
                       Comfort 4-Seat
                     </span>
                   </div>
-                  <div className="font-bold text-slate-900 text-sm mt-2">Marhaba Taxi</div>
+                  <div className="font-bold text-slate-900 text-sm mt-2">Jijiga Express Taxi</div>
                   <div className="text-[11px] text-slate-500">Air-conditioned Sedan</div>
                   <div className="font-mono font-bold text-blue-700 text-xs mt-1">~{tripPrice} ETB</div>
                 </button>
@@ -230,7 +230,7 @@ export function BookRideModal({
                       Quick & Agile
                     </span>
                   </div>
-                  <div className="font-bold text-slate-900 text-sm mt-2">Marhaba Moto / Bajaj</div>
+                  <div className="font-bold text-slate-900 text-sm mt-2">Jijiga Express Moto / Bajaj</div>
                   <div className="text-[11px] text-slate-500">Fast city express ride</div>
                   <div className="font-mono font-bold text-emerald-700 text-xs mt-1">~{Math.round(tripPrice * 0.65)} ETB</div>
                 </button>
@@ -308,12 +308,15 @@ export function BookRideModal({
                 onClick={handleStartSearchAndBook}
                 className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
-                <span>Request {vehicleType === 'MARHABA_TAXI' ? 'Marhaba Taxi' : 'Marhaba Moto'}</span>
+                <span>Request {vehicleType === 'MARHABA_TAXI' ? 'Jijiga Express Taxi' : 'Jijiga Express Moto'}</span>
                 <span className="text-emerald-400 font-mono font-bold">
                   ({vehicleType === 'MARHABA_TAXI' ? tripPrice : Math.round(tripPrice * 0.65)} ETB)
                 </span>
                 <ArrowRight className="w-4 h-4 ml-1" />
               </button>
+              <p className="text-[11px] text-slate-500 text-center mt-2 font-medium">
+                To request custom delivery features, ask support.
+              </p>
             </div>
           </div>
         )}

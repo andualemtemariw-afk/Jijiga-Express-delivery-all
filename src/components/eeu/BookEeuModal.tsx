@@ -319,22 +319,27 @@ export const BookEeuModal: React.FC<BookEeuModalProps> = ({
           </div>
 
           {/* Footer Submit */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!meterValidation.isValid || rechargeAmount <= 0}
-              className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition"
-            >
-              <span>Dispatch Rider for Card Pickup</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!meterValidation.isValid || rechargeAmount <= 0}
+                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition"
+              >
+                <span>Dispatch Rider for Card Pickup</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500 text-center font-medium">
+              To request custom delivery features, ask support.
+            </p>
           </div>
         </form>
       </motion.div>

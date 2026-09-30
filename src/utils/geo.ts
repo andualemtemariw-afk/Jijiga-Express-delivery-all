@@ -18,7 +18,7 @@ export const MAMILA_COORDINATES: Record<string, LatLng> = {
   m2: { lat: 9.3510, lng: 42.7915 }, // Arada Bakery (Central market sector)
   m3: { lat: 9.3470, lng: 42.8045 }, // Sheger Dairy (South depot)
   m4: { lat: 9.3580, lng: 42.7980 }, // Hassan Wali Hotel & Restaurant (Taiwan Market)
-  m5: { lat: 9.3530, lng: 42.7930 }, // Marhaba Fast Food & Drinks (Commercial Hub)
+  m5: { lat: 9.3530, lng: 42.7930 }, // Jijiga Express Food & Drinks Hub (Commercial Hub)
 };
 
 // Default customer coordinates in Jijiga
