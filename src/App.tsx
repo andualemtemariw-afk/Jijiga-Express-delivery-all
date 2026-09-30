@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { Role, Order, Batch, PaymentMethod, ChatMessage, EeuRechargeDetails } from './types';
 import { INITIAL_BATCHES, MAMILAS, INITIAL_ORDERS } from './data';
@@ -10,9 +10,12 @@ import { AdminView } from './roles/AdminView';
 import { MamilaView } from './roles/MamilaView';
 import { MapPreviewModal } from './components/map/MapPreviewModal';
 import { UpdateApiKeyModal } from './components/map/UpdateApiKeyModal';
+import { GoogleDriveSyncModal } from './components/drive/GoogleDriveSyncModal';
+import { GmailNotificationModal } from './components/gmail/GmailNotificationModal';
+import { subscribeToFirestoreOrders, saveOrderToFirestore } from './services/firestoreSync';
 import { MAMILA_COORDINATES, DEFAULT_CUSTOMER_COORDINATES } from './utils/geo';
 import { getNextEeuPhase, EEU_STATE_CHAIN } from './utils/eeuStateMachine';
-import { Package2, Users, Bike, Shield, ShoppingBag, Store, MapPin, KeyRound } from 'lucide-react';
+import { Package2, Users, Bike, Shield, ShoppingBag, Store, MapPin, KeyRound, HardDrive, Mail } from 'lucide-react';
 
 export const CURRENT_CUSTOMER_PROFILE = {
   id: 'c1',
@@ -34,9 +37,27 @@ export default function App() {
   const [orderMessages, setOrderMessages] = useState<Record<string, ChatMessage[]>>(INITIAL_ORDER_CHATS);
   const [globalModalOrder, setGlobalModalOrder] = useState<Order | null>(null);
   const [apiKey, setApiKey] = useState(() => {
-    return localStorage.getItem('user_google_maps_api_key') ?? (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '');
+    return (
+      import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+      localStorage.getItem('user_google_maps_api_key') ||
+      'AIzaSyB-lWP1UoMvnai0oxJpgzyquD3dmma99oU'
+    );
   });
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [showDriveModal, setShowDriveModal] = useState(false);
+  const [showGmailModal, setShowGmailModal] = useState(false);
+
+  // Real-time synchronization with Cloud Firestore
+  useEffect(() => {
+    const unsubscribe = subscribeToFirestoreOrders((remoteOrders) => {
+      if (remoteOrders && remoteOrders.length > 0) {
+        setOrders(remoteOrders);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
 
   const handlePlaceOrder = (
     batch: Batch, 
@@ -98,22 +119,36 @@ export default function App() {
     };
 
     setOrders(prev => [newOrder, ...prev]);
+    saveOrderToFirestore(newOrder).catch((err) => console.warn('Firestore write notice:', err));
   };
 
   const handleBookParcel = (parcelOrder: Partial<Order>) => {
-    setOrders(prev => [parcelOrder as Order, ...prev]);
+    const fullOrder = parcelOrder as Order;
+    setOrders(prev => [fullOrder, ...prev]);
+    saveOrderToFirestore(fullOrder).catch((err) => console.warn('Firestore write notice:', err));
   };
 
   const handleBookRide = (rideOrder: Partial<Order>) => {
-    setOrders(prev => [rideOrder as Order, ...prev]);
+    const fullOrder = rideOrder as Order;
+    setOrders(prev => [fullOrder, ...prev]);
+    saveOrderToFirestore(fullOrder).catch((err) => console.warn('Firestore write notice:', err));
   };
 
   const handleBookEeu = (eeuOrder: Partial<Order>) => {
-    setOrders(prev => [eeuOrder as Order, ...prev]);
+    const fullOrder = eeuOrder as Order;
+    setOrders(prev => [fullOrder, ...prev]);
+    saveOrderToFirestore(fullOrder).catch((err) => console.warn('Firestore write notice:', err));
   };
 
   const handleUpdateOrder = (orderId: string, updates: Partial<Order>) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
+    setOrders(prev => {
+      const next = prev.map(o => o.id === orderId ? { ...o, ...updates } : o);
+      const target = next.find(o => o.id === orderId);
+      if (target) {
+        saveOrderToFirestore(target).catch((err) => console.warn('Firestore write notice:', err));
+      }
+      return next;
+    });
   };
 
   const handleSendMessage = (orderId: string, message: Omit<ChatMessage, 'id' | 'orderId'>) => {
@@ -138,9 +173,9 @@ export default function App() {
         b.id === targetOrder.batchId ? { ...b, available: b.available + qty } : b
       ));
 
-      setOrders(prev => prev.map(o => 
-        o.id === orderId ? { ...o, status: 'CANCELLED' } : o
-      ));
+      const updated = { ...targetOrder, status: 'CANCELLED' as const };
+      setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
+      saveOrderToFirestore(updated).catch((err) => console.warn('Firestore write notice:', err));
     }
   };
 
@@ -284,7 +319,12 @@ export default function App() {
   const mamilaOrders = orders.filter(o => o.mamilaId === CURRENT_MAMILA_ID);
 
   return (
-    <APIProvider apiKey={apiKey} onError={(e) => console.warn('Google Maps Provider warning:', e)}>
+    <APIProvider 
+      apiKey={apiKey} 
+      language="en" 
+      region="ET"
+      onError={(e) => console.warn('Google Maps Provider warning:', e)}
+    >
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900 pb-16">
         {/* 3-Zone Top Bar Contract adhering to frontend-design */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
@@ -328,18 +368,34 @@ export default function App() {
             </nav>
 
             {/* Zone 3: Quiet context indicator */}
-            <div className="hidden lg:flex items-center gap-3 text-xs text-slate-500 font-medium">
+            <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-500 font-medium">
+              <button
+                onClick={() => setShowDriveModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 transition-colors cursor-pointer shadow-2xs"
+                title="Google Drive Receipts Vault"
+              >
+                <HardDrive className="w-3.5 h-3.5 text-amber-600" />
+                <span>Google Drive</span>
+              </button>
+              <button
+                onClick={() => setShowGmailModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 text-red-800 border border-red-200/80 transition-colors cursor-pointer shadow-2xs"
+                title="Gmail Dispatch Alerts"
+              >
+                <Mail className="w-3.5 h-3.5 text-red-600" />
+                <span>Gmail</span>
+              </button>
               <button
                 onClick={() => setShowKeyModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                 title="Configure Google Maps API Key"
               >
                 <KeyRound className="w-3.5 h-3.5 text-blue-600" />
                 <span>Map Key</span>
               </button>
-              <span>Horn of Africa Network</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono text-emerald-600 font-bold">{orders.length} Orders Active</span>
+              <span className="hidden md:inline">Horn of Africa Network</span>
+              <span className="hidden md:inline" aria-hidden="true">·</span>
+              <span className="font-mono text-emerald-600 font-bold hidden sm:inline">{orders.length} Orders Active</span>
             </div>
           </div>
         </header>
@@ -419,6 +475,20 @@ export default function App() {
             setApiKey(newK);
             window.location.reload();
           }}
+        />
+
+        {/* Google Drive Vault Sync Modal */}
+        <GoogleDriveSyncModal
+          isOpen={showDriveModal}
+          onClose={() => setShowDriveModal(false)}
+          orders={orders}
+        />
+
+        {/* Gmail Dispatch Notifications Modal */}
+        <GmailNotificationModal
+          isOpen={showGmailModal}
+          onClose={() => setShowGmailModal(false)}
+          orders={orders}
         />
       </div>
     </APIProvider>

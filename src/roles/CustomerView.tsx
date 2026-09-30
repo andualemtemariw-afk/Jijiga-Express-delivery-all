@@ -31,9 +31,13 @@ import {
   Map as MapIcon,
   Maximize2,
   Camera,
-  Zap
+  Zap,
+  HardDrive,
+  UploadCloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { uploadOrderReceiptToDrive } from '../services/googleDrive';
+import { getAccessToken, googleSignIn } from '../services/googleAuth';
 import { OrderMapPreview } from '../components/map/OrderMapPreview';
 import { DeliveryLocationPickerMap } from '../components/map/DeliveryLocationPickerMap';
 import { DeliveryRouteMapBanner } from '../components/map/DeliveryRouteMapBanner';
@@ -117,6 +121,8 @@ export function CustomerView({
   // Checkout & process state
   const [txLogs, setTxLogs] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [driveSaving, setDriveSaving] = useState(false);
+  const [driveSaveSuccess, setDriveSaveSuccess] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelToast, setCancelToast] = useState<string | null>(null);
   
@@ -1679,12 +1685,50 @@ export function CustomerView({
                 </div>
               </div>
 
-              <button
-                onClick={() => setReceiptOrder(null)}
-                className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-colors"
-              >
-                Close Receipt
-              </button>
+              {driveSaveSuccess && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold text-center flex items-center justify-center gap-1.5">
+                  <UploadCloud className="w-4 h-4 text-emerald-600" />
+                  <span>{driveSaveSuccess}</span>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setDriveSaving(true);
+                      let activeToken = await getAccessToken();
+                      if (!activeToken) {
+                        const res = await googleSignIn();
+                        activeToken = res?.accessToken || null;
+                      }
+                      if (!activeToken) throw new Error('Google Sign-In was cancelled or failed.');
+                      await uploadOrderReceiptToDrive(activeToken, receiptOrder);
+                      setDriveSaveSuccess('Archived to Google Drive folder!');
+                      setTimeout(() => setDriveSaveSuccess(null), 3500);
+                    } catch (err: any) {
+                      console.error('Drive save error:', err);
+                      alert(err.message || 'Could not archive to Google Drive');
+                    } finally {
+                      setDriveSaving(false);
+                    }
+                  }}
+                  disabled={driveSaving}
+                  className="flex-1 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Archive official delivery receipt to Google Drive"
+                >
+                  <HardDrive className="w-3.5 h-3.5 text-amber-700" />
+                  <span>{driveSaving ? 'Saving...' : 'Save to Google Drive'}</span>
+                </button>
+
+                <button
+                  onClick={() => setReceiptOrder(null)}
+                  className="flex-1 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
