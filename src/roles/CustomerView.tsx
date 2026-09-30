@@ -29,13 +29,18 @@ import {
   FastForward,
   Navigation,
   Map as MapIcon,
-  Maximize2
+  Maximize2,
+  Camera,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { OrderMapPreview } from '../components/map/OrderMapPreview';
 import { DeliveryLocationPickerMap } from '../components/map/DeliveryLocationPickerMap';
 import { BookParcelModal } from '../components/parcel/BookParcelModal';
 import { BookRideModal } from '../components/ride/BookRideModal';
+import { BookEeuModal } from '../components/eeu/BookEeuModal';
+import { EeuCustodyStepper } from '../components/eeu/EeuCustodyStepper';
+import { MamilaGallery, MamilaGalleryItem } from '../components/mamila/MamilaGallery';
 import { CommunicationBridgeModal } from '../components/communication/CommunicationBridgeModal';
 import { LatLng, DEFAULT_CUSTOMER_COORDINATES, CITY_COORDINATES } from '../utils/geo';
 
@@ -64,6 +69,7 @@ interface Props {
   onOpenMapPreview?: (order: Order) => void;
   onBookParcel?: (order: Partial<Order>) => void;
   onBookRide?: (order: Partial<Order>) => void;
+  onBookEeu?: (order: Partial<Order>) => void;
 }
 
 type TabType = 'batches' | 'tracking' | 'history' | 'profile';
@@ -80,7 +86,8 @@ export function CustomerView({
   onSimulateNextStep,
   onOpenMapPreview,
   onBookParcel,
-  onBookRide
+  onBookRide,
+  onBookEeu
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('batches');
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
@@ -97,6 +104,10 @@ export function CustomerView({
   // Super-app services modals
   const [showBookParcelModal, setShowBookParcelModal] = useState(false);
   const [showBookRideModal, setShowBookRideModal] = useState(false);
+  const [showBookEeuModal, setShowBookEeuModal] = useState(false);
+
+  // Batch display view mode: Standard Grid vs Live Mamila Photo Gallery
+  const [batchDisplayMode, setBatchDisplayMode] = useState<'grid' | 'gallery'>('grid');
 
   // Search & category filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,8 +120,24 @@ export function CustomerView({
   const [cancelToast, setCancelToast] = useState<string | null>(null);
   
   // History filters
-  const [historyServiceFilter, setHistoryServiceFilter] = useState<'ALL' | 'FOOD' | 'PARCEL' | 'RIDE'>('ALL');
+  const [historyServiceFilter, setHistoryServiceFilter] = useState<'ALL' | 'FOOD' | 'PARCEL' | 'RIDE' | 'EEU_RECHARGE'>('ALL');
   const [historyFilter, setHistoryFilter] = useState<'ALL' | 'DELIVERED' | 'ACTIVE' | 'CANCELLED' | 'DEFECT_REJECTED'>('ALL');
+
+  const handleSelectFromGallery = (galleryItem: MamilaGalleryItem) => {
+    const matching = inventory.find(b => b.name === galleryItem.batchName) || {
+      id: galleryItem.id,
+      mamilaId: galleryItem.mamilaId,
+      name: galleryItem.batchName,
+      description: `${galleryItem.grade} · ${galleryItem.notes}`,
+      price: galleryItem.pricePerUnit,
+      available: galleryItem.availableUnits,
+      expiry: `Today (Vault stamped ${galleryItem.timestamp})`,
+      imageUrl: galleryItem.imageUrl,
+      category: galleryItem.category,
+      unit: galleryItem.unitLabel
+    };
+    setSelectedBatch(matching);
+  };
   
   // Rating & Dispute modal states
   const [ratingOrder, setRatingOrder] = useState<Order | null>(null);
@@ -358,6 +385,16 @@ export function CustomerView({
             </button>
           )}
 
+          {onBookEeu && (
+            <button
+              onClick={() => setShowBookEeuModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-2xs"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-600" />
+              <span>EEU Card Recharge</span>
+            </button>
+          )}
+
           <div className="hidden md:flex items-center gap-2 px-3 text-xs text-slate-500 border-l border-slate-200">
             <MapPin className="w-3.5 h-3.5 text-blue-600" />
             <span>{selectedCity}</span>
@@ -368,7 +405,7 @@ export function CustomerView({
       </div>
 
       {/* Horn of Africa Multi-Service Super-App Banner (Walkthrough features) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div 
           onClick={() => setActiveTab('batches')}
           className="p-3.5 bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl flex items-center justify-between cursor-pointer hover:shadow-xs transition-all"
@@ -416,6 +453,22 @@ export function CustomerView({
           </div>
           <span className="text-emerald-700 font-bold text-xs">Book →</span>
         </div>
+
+        <div 
+          onClick={() => setShowBookEeuModal(true)}
+          className="p-3.5 bg-linear-to-r from-amber-50 to-yellow-50 border border-amber-300 rounded-2xl flex items-center justify-between cursor-pointer hover:shadow-xs transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold text-lg shadow-xs">
+              ⚡
+            </div>
+            <div>
+              <div className="font-bold text-xs text-slate-900">EEU Prepaid Recharge</div>
+              <div className="text-[11px] text-slate-500">13-digit meter • Round-trip custody</div>
+            </div>
+          </div>
+          <span className="text-amber-800 font-bold text-xs">Recharge →</span>
+        </div>
       </div>
 
       {/* TAB 1: FRESH BATCHES */}
@@ -436,15 +489,43 @@ export function CustomerView({
                   </div>
                 </div>
 
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search fresh harvest..."
-                    className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
-                  />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    <button
+                      onClick={() => setBatchDisplayMode('grid')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                        batchDisplayMode === 'grid'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>Product Grid</span>
+                    </button>
+                    <button
+                      onClick={() => setBatchDisplayMode('gallery')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                        batchDisplayMode === 'gallery'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Mamila Proof Vault</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    </button>
+                  </div>
+
+                  <div className="relative w-full sm:w-52">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search fresh harvest..."
+                      className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -466,85 +547,94 @@ export function CustomerView({
               </div>
             </div>
             
-            {/* Products Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {filteredBatches.map(batch => (
-                <div 
-                  key={batch.id} 
-                  className={`bg-white rounded-2xl border transition-all overflow-hidden flex flex-col justify-between ${
-                    batch.available > 0 
-                      ? 'border-slate-200 hover:shadow-lg hover:border-slate-300 cursor-pointer' 
-                      : 'border-slate-200 opacity-60'
-                  }`}
-                  onClick={() => batch.available > 0 && handleOpenCheckout(batch)}
-                >
-                  <div className="relative">
-                    <img 
-                      src={batch.imageUrl} 
-                      alt={batch.name} 
-                      referrerPolicy="no-referrer"
-                      className="w-full h-48 object-cover" 
-                      onError={(e) => {
-                        // Fallback gracefully
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                    <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg">
-                      {batch.category || 'Fresh Batch'}
-                    </div>
-                    <div className="absolute top-3 right-3 bg-white/95 text-slate-900 text-xs font-mono font-bold px-2.5 py-1 rounded-lg shadow-sm">
-                      {batch.available > 0 ? `${batch.available} left` : 'Sold out'}
-                    </div>
-                  </div>
-
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-bold text-slate-900 text-lg">{batch.name}</h3>
-                        <span className="font-extrabold text-lg text-blue-600 font-mono tabular-nums">{batch.price} ETB</span>
+            {/* Products Display: Standard Grid vs Live Mamila Photo Proof Gallery */}
+            {batchDisplayMode === 'gallery' ? (
+              <div className="space-y-4">
+                <MamilaGallery
+                  allowUpload={false}
+                  onBatchSelected={handleSelectFromGallery}
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {filteredBatches.map(batch => (
+                  <div 
+                    key={batch.id} 
+                    className={`bg-white rounded-2xl border transition-all overflow-hidden flex flex-col justify-between ${
+                      batch.available > 0 
+                        ? 'border-slate-200 hover:shadow-lg hover:border-slate-300 cursor-pointer' 
+                        : 'border-slate-200 opacity-60'
+                    }`}
+                    onClick={() => batch.available > 0 && handleOpenCheckout(batch)}
+                  >
+                    <div className="relative">
+                      <img 
+                        src={batch.imageUrl} 
+                        alt={batch.name} 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-48 object-cover" 
+                        onError={(e) => {
+                          // Fallback gracefully
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg">
+                        {batch.category || 'Fresh Batch'}
                       </div>
-                      <p className="text-xs text-slate-600 line-clamp-2">{batch.description}</p>
-                      
-                      {batch.unit && (
-                        <div className="text-[11px] text-slate-500 mt-2 font-medium">
-                          Package size: {batch.unit}
+                      <div className="absolute top-3 right-3 bg-white/95 text-slate-900 text-xs font-mono font-bold px-2.5 py-1 rounded-lg shadow-sm">
+                        {batch.available > 0 ? `${batch.available} left` : 'Sold out'}
+                      </div>
+                    </div>
+
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                      <div>
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-bold text-slate-900 text-lg">{batch.name}</h3>
+                          <span className="font-extrabold text-lg text-blue-600 font-mono tabular-nums">{batch.price} ETB</span>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 space-y-3">
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span className="flex items-center gap-1 truncate">
-                          <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" /> 
-                          <span className="truncate">Mamila: {batch.mamilaId}</span>
-                        </span>
-                        <span className="flex items-center gap-1 flex-shrink-0">
-                          <Clock className="w-3.5 h-3.5 text-amber-500" /> 
-                          <span>{batch.expiry}</span>
-                        </span>
+                        <p className="text-xs text-slate-600 line-clamp-2">{batch.description}</p>
+                        
+                        {batch.unit && (
+                          <div className="text-[11px] text-slate-500 mt-2 font-medium">
+                            Package size: {batch.unit}
+                          </div>
+                        )}
                       </div>
 
-                      <button 
-                        disabled={batch.available === 0}
-                        className={`w-full py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-colors flex items-center justify-center gap-2 ${
-                          batch.available > 0 
-                            ? 'bg-slate-900 text-white hover:bg-slate-800 cursor-pointer' 
-                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {batch.available > 0 ? 'Select & Reserve Batch' : 'Sold Out'}
-                      </button>
+                      <div className="pt-3 border-t border-slate-100 space-y-3">
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" /> 
+                            <span className="truncate">Mamila: {batch.mamilaId}</span>
+                          </span>
+                          <span className="flex items-center gap-1 flex-shrink-0">
+                            <Clock className="w-3.5 h-3.5 text-amber-500" /> 
+                            <span>{batch.expiry}</span>
+                          </span>
+                        </div>
+
+                        <button 
+                          disabled={batch.available === 0}
+                          className={`w-full py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-colors flex items-center justify-center gap-2 ${
+                            batch.available > 0 
+                              ? 'bg-slate-900 text-white hover:bg-slate-800 cursor-pointer' 
+                              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {batch.available > 0 ? 'Select & Reserve Batch' : 'Sold Out'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {filteredBatches.length === 0 && (
-                <div className="col-span-2 p-12 bg-white rounded-2xl border border-slate-200 text-center text-slate-500">
-                  No batches matching your search query. Try searching for different items.
-                </div>
-              )}
-            </div>
+                {filteredBatches.length === 0 && (
+                  <div className="col-span-2 p-12 bg-white rounded-2xl border border-slate-200 text-center text-slate-500">
+                    No batches matching your search query. Try searching for different items.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Checkout Drawer */}
@@ -896,69 +986,73 @@ export function CustomerView({
                   </div>
                 )}
 
-                {/* Visual Step-Bar */}
-                {(() => {
-                  let activeIndex = 0;
-                  switch (activeOrder.status) {
-                    case 'RUNNER_ASSIGNED':
-                    case 'READY_FOR_RIDER':
-                      activeIndex = 0;
-                      break;
-                    case 'RIDER_ACCEPTED':
-                      activeIndex = 1;
-                      break;
-                    case 'PICKED_UP':
-                      activeIndex = 2;
-                      break;
-                    case 'DELIVERED':
-                    case 'RATED':
-                      activeIndex = 3;
-                      break;
-                    default:
-                      activeIndex = 0;
-                  }
+                {/* Visual Step-Bar or EEU Chain of Custody Stepper */}
+                {activeOrder.serviceType === 'EEU_RECHARGE' ? (
+                  <EeuCustodyStepper order={activeOrder} />
+                ) : (
+                  (() => {
+                    let activeIndex = 0;
+                    switch (activeOrder.status) {
+                      case 'RUNNER_ASSIGNED':
+                      case 'READY_FOR_RIDER':
+                        activeIndex = 0;
+                        break;
+                      case 'RIDER_ACCEPTED':
+                        activeIndex = 1;
+                        break;
+                      case 'PICKED_UP':
+                        activeIndex = 2;
+                        break;
+                      case 'DELIVERED':
+                      case 'RATED':
+                        activeIndex = 3;
+                        break;
+                      default:
+                        activeIndex = 0;
+                    }
 
-                  const steps = [
-                    { key: 'PREPARING', label: 'Preparing', icon: Package },
-                    { key: 'PICKUP', label: 'Pickup', icon: Store },
-                    { key: 'TRANSIT', label: 'Transit', icon: Bike },
-                    { key: 'DELIVERED', label: 'Delivered', icon: CheckCircle2 }
-                  ];
+                    const steps = [
+                      { key: 'PREPARING', label: 'Preparing', icon: Package },
+                      { key: 'PICKUP', label: 'Pickup', icon: Store },
+                      { key: 'TRANSIT', label: 'Transit', icon: Bike },
+                      { key: 'DELIVERED', label: 'Delivered', icon: CheckCircle2 }
+                    ];
 
-                  return (
-                    <div className="relative flex justify-between items-center px-2 md:px-8 py-4">
-                      <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
-                      
-                      <div 
-                        className="absolute left-10 top-1/2 -translate-y-1/2 h-1 bg-blue-600 rounded-full transition-all duration-500 ease-in-out"
-                        style={{ width: `calc(${(activeIndex / (steps.length - 1)) * 100}% - 4rem)` }} 
-                      />
-
-                      {steps.map((step, idx) => {
-                        const isPast = idx <= activeIndex;
-                        const isCurrent = idx === activeIndex;
-                        const Icon = step.icon;
+                    return (
+                      <div className="relative flex justify-between items-center px-2 md:px-8 py-4">
+                        <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
                         
-                        return (
-                          <div key={step.key} className="relative z-10 flex flex-col items-center gap-3 w-20">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 ${
-                              isPast 
-                                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-                                : 'bg-white border-2 border-slate-200 text-slate-400'
-                            } ${isCurrent ? 'ring-4 ring-blue-100' : ''}`}>
-                              <Icon className="w-5 h-5" />
+                        <div 
+                          className="absolute left-10 top-1/2 -translate-y-1/2 h-1 bg-blue-600 rounded-full transition-all duration-500 ease-in-out"
+                          style={{ width: `calc(${(activeIndex / (steps.length - 1)) * 100}% - 4rem)` }} 
+                        />
+
+                        {steps.map((step, idx) => {
+                          const isPast = idx <= activeIndex;
+                          const isCurrent = idx === activeIndex;
+                          const Icon = step.icon;
+                          
+                          return (
+                            <div key={step.key} className="relative z-10 flex flex-col items-center gap-3 w-20">
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 ${
+                                isPast 
+                                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+                                  : 'bg-white border-2 border-slate-200 text-slate-400'
+                              } ${isCurrent ? 'ring-4 ring-blue-100' : ''}`}>
+                                <Icon className="w-5 h-5" />
+                              </div>
+                              <span className={`text-xs md:text-sm font-semibold text-center transition-colors duration-500 ${
+                                isPast ? 'text-slate-900' : 'text-slate-400'
+                              }`}>
+                                {step.label}
+                              </span>
                             </div>
-                            <span className={`text-xs md:text-sm font-semibold text-center transition-colors duration-500 ${
-                              isPast ? 'text-slate-900' : 'text-slate-400'
-                            }`}>
-                              {step.label}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                )}
 
                 {/* Interactive Google Maps Order Map Preview */}
                 <div className="space-y-3">
@@ -1775,6 +1869,16 @@ export function CustomerView({
           name: CURRENT_CUSTOMER_PROFILE.name,
           phone: CURRENT_CUSTOMER_PROFILE.phone,
           city: selectedCity,
+        }}
+      />
+
+      {/* BOOK EEU PREPAID ELECTRICITY RECHARGE MODAL */}
+      <BookEeuModal
+        isOpen={showBookEeuModal}
+        onClose={() => setShowBookEeuModal(false)}
+        onSubmit={(order) => {
+          onBookEeu?.(order);
+          setActiveTab('tracking');
         }}
       />
     </div>

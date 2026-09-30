@@ -515,6 +515,67 @@ function generateInitialOrders(): Order[] {
     });
   });
 
+  // Seed live EEU Prepaid Electricity Card Recharge order
+  generatedOrders.unshift({
+    id: 'ORD-EEU-01',
+    serviceType: 'EEU_RECHARGE',
+    batchId: 'eeu-batch-01',
+    batchName: 'EEU Card Recharge: 500 ETB (~232.5 kWh)',
+    mamilaId: 'eeu_hub',
+    mamilaName: 'EEU Jijiga Main District Office (Keleb)',
+    mamilaLocation: 'Near Regional Admin Complex, Keleb Sector, Jijiga',
+    price: 500,
+    quantity: 1,
+    deliveryFee: 75,
+    totalPrice: 575,
+    status: 'PICKED_UP',
+    paymentMethod: 'TELEBIRR',
+    customerId: 'c1',
+    customerName: 'Andualem Awraris Haile',
+    customerCity: 'Jijiga',
+    customerPlusCode: '8F2P+5H Jijiga',
+    customerAddress: 'Kebele 04, Near Central Plaza, Jijiga',
+    specialInstructions: 'Card is inside red pouch on living room table.',
+    riderId: 'rid1',
+    riderName: 'Dawit Rider',
+    distanceKm: 2.1,
+    etaMinutes: 8,
+    eeuDetails: {
+      meterNumber: '0142-8839-1029-3',
+      cardSerialNumber: 'EEU-SM-99482',
+      rechargeAmount: 500,
+      serviceFee: 75,
+      eeuHubName: 'EEU Jijiga Main District Office (Keleb)',
+      custodyPhase: 'AT_EEU_HUB',
+      custodyLabel: 'AT_EEU_HUB',
+      custodyTimeline: [
+        {
+          phase: 'WITH_CUSTOMER',
+          label: 'WITH_CUSTOMER',
+          timestamp: '09:15 AM',
+          note: 'Order placed by Andualem Awraris Haile. Smart card ready for courier.',
+          actor: 'Customer'
+        },
+        {
+          phase: 'WITH_RIDER_OUTBOUND',
+          label: 'WITH_RIDER',
+          timestamp: '09:30 AM',
+          note: 'Card & 500 ETB float secured in tamper-evident pouch #8819 by Dawit Rider.',
+          actor: 'Dawit Rider'
+        },
+        {
+          phase: 'AT_EEU_HUB',
+          label: 'AT_EEU_HUB',
+          timestamp: '09:48 AM',
+          note: 'Dawit Rider checked in at EEU Keleb District counter. Smart chip connected.',
+          actor: 'EEU Teller #4'
+        }
+      ],
+      kwhUnits: 232.5
+    },
+    createdAt: new Date(Date.now() - 3600000)
+  });
+
   return generatedOrders;
 }
 

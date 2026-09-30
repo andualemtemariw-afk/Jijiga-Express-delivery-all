@@ -1,6 +1,6 @@
 export type Role = 'CUSTOMER' | 'MAMILA' | 'RUNNER' | 'RIDER' | 'ADMIN';
 
-export type ServiceType = 'FOOD' | 'PARCEL' | 'RIDE';
+export type ServiceType = 'FOOD' | 'PARCEL' | 'RIDE' | 'EEU_RECHARGE';
 
 export type PaymentMethod = 
   | 'TELEBIRR' 
@@ -22,6 +22,35 @@ export type OrderStatus =
   | 'RATED'
   | 'CANCELLED'
   | 'DEFECT_REJECTED';
+
+// EEU Prepaid Electricity Card Recharge Round-Trip Chain of Custody
+export type EeuCustodyPhase = 
+  | 'WITH_CUSTOMER'       // 1. Physical card with customer
+  | 'WITH_RIDER_OUTBOUND' // 2. Rider collected card & cash, traveling to EEU
+  | 'AT_EEU_HUB'          // 3. At EEU hub recharge terminal
+  | 'WITH_RIDER_RETURN'   // 4. Card recharged, returning to customer
+  | 'RETURNED';           // 5. Card + terminal receipt returned to customer
+
+export interface EeuRechargeDetails {
+  meterNumber: string; // 13-digit meter number string
+  cardSerialNumber?: string; // Physical card identifier
+  rechargeAmount: number; // Cash float amount in ETB
+  serviceFee: number; // Delivery & errand service fee
+  eeuHubName: string; // e.g. "EEU Jijiga Main District Office"
+  custodyPhase: EeuCustodyPhase;
+  custodyLabel: 'WITH_CUSTOMER' | 'WITH_RIDER' | 'AT_EEU_HUB' | 'RETURNED';
+  custodyTimeline: Array<{
+    phase: EeuCustodyPhase;
+    label: string;
+    timestamp: string;
+    note: string;
+    actor: string;
+  }>;
+  tokenCode?: string; // 20-digit STS prepaid code
+  receiptImageUrl?: string; // Mandatory camera snapshot of EEU terminal paper receipt
+  receiptTimestamp?: string;
+  kwhUnits?: number;
+}
 
 export interface Mamila {
   id: string;
@@ -115,6 +144,7 @@ export interface Order {
   cookingInstruction?: string; // Custom preparation / cooking note (e.g. "Please cook it well done, no pink inside")
   parcelDetails?: ParcelDetails;
   rideDetails?: RideDetails;
+  eeuDetails?: EeuRechargeDetails;
   runnerId?: string;
   runnerName?: string;
   runnerTagId?: string;

@@ -1,15 +1,17 @@
-import { Order } from '../types';
+import { Order, ChatMessage } from '../types';
 import { Camera, MapPin, PackageCheck, User, MessageSquare, AlertCircle, ShieldAlert, CheckSquare, XCircle, Check } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface Props {
   orders: Order[];
+  orderMessages?: Record<string, ChatMessage[]>;
+  onSendMessage?: (orderId: string, message: Omit<ChatMessage, 'id' | 'orderId'>) => void;
   onUpdateStatus: (orderId: string, status: Order['status']) => void;
   onRejectDefect?: (orderId: string, reason: string) => void;
 }
 
-export function RunnerView({ orders, onUpdateStatus, onRejectDefect }: Props) {
+export function RunnerView({ orders, orderMessages, onSendMessage, onUpdateStatus, onRejectDefect }: Props) {
   const assignedOrders = orders.filter(o => o.status === 'RUNNER_ASSIGNED');
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   

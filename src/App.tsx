@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
-import { Role, Order, Batch, PaymentMethod, ChatMessage } from './types';
+import { Role, Order, Batch, PaymentMethod, ChatMessage, EeuRechargeDetails } from './types';
 import { INITIAL_BATCHES, MAMILAS, INITIAL_ORDERS } from './data';
 import { INITIAL_ORDER_CHATS } from './data/vernacularPhrases';
 import { CustomerView } from './roles/CustomerView';
@@ -11,6 +11,7 @@ import { MamilaView } from './roles/MamilaView';
 import { MapPreviewModal } from './components/map/MapPreviewModal';
 import { UpdateApiKeyModal } from './components/map/UpdateApiKeyModal';
 import { MAMILA_COORDINATES, DEFAULT_CUSTOMER_COORDINATES } from './utils/geo';
+import { getNextEeuPhase, EEU_STATE_CHAIN } from './utils/eeuStateMachine';
 import { Package2, Users, Bike, Shield, ShoppingBag, Store, MapPin, KeyRound } from 'lucide-react';
 
 export const CURRENT_CUSTOMER_PROFILE = {
@@ -107,6 +108,10 @@ export default function App() {
     setOrders(prev => [rideOrder as Order, ...prev]);
   };
 
+  const handleBookEeu = (eeuOrder: Partial<Order>) => {
+    setOrders(prev => [eeuOrder as Order, ...prev]);
+  };
+
   const handleUpdateOrder = (orderId: string, updates: Partial<Order>) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
   };
@@ -143,6 +148,45 @@ export default function App() {
   const handleSimulateNextStep = (orderId: string) => {
     const target = orders.find(o => o.id === orderId);
     if (!target) return;
+
+    // Handle EEU Prepaid Recharge Round-Trip Chain of Custody
+    if (target.serviceType === 'EEU_RECHARGE' && target.eeuDetails) {
+      const nextPhase = getNextEeuPhase(target.eeuDetails.custodyPhase);
+      if (nextPhase) {
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const stepConfig = EEU_STATE_CHAIN.find(s => s.phase === nextPhase);
+        const isReturned = nextPhase === 'RETURNED';
+
+        const updatedEeuDetails: EeuRechargeDetails = {
+          ...target.eeuDetails,
+          custodyPhase: nextPhase,
+          custodyLabel: stepConfig ? stepConfig.label : (nextPhase as any),
+          custodyTimeline: [
+            ...target.eeuDetails.custodyTimeline,
+            {
+              phase: nextPhase,
+              label: stepConfig ? stepConfig.label : nextPhase,
+              timestamp: nowTime,
+              note: `Step advanced to ${stepConfig ? stepConfig.title : nextPhase}.`,
+              actor: 'Custody Dispatch'
+            }
+          ],
+          receiptImageUrl: target.eeuDetails.receiptImageUrl || (nextPhase === 'WITH_RIDER_RETURN' || nextPhase === 'RETURNED'
+            ? '/src/assets/images/dairy_farm_essentials_1790430944133.jpg'
+            : undefined),
+          receiptTimestamp: target.eeuDetails.receiptTimestamp || (nextPhase === 'WITH_RIDER_RETURN' ? `${new Date().toISOString().slice(0, 10)} ${nowTime}` : undefined),
+          tokenCode: target.eeuDetails.tokenCode || '4920-1928-4820-9182-3849'
+        };
+
+        handleUpdateOrder(orderId, {
+          eeuDetails: updatedEeuDetails,
+          status: isReturned ? 'DELIVERED' : 'PICKED_UP',
+          riderId: target.riderId || CURRENT_RIDER_ID,
+          riderName: target.riderName || 'Dawit Rider'
+        });
+        return;
+      }
+    }
 
     if (target.status === 'RUNNER_ASSIGNED') {
       handleUpdateOrder(orderId, { 
@@ -315,6 +359,7 @@ export default function App() {
               onOpenMapPreview={(order) => setGlobalModalOrder(order)}
               onBookParcel={handleBookParcel}
               onBookRide={handleBookRide}
+              onBookEeu={handleBookEeu}
             />
           )}
           {activeRole === 'MAMILA' && (

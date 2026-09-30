@@ -1,7 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { Batch, Order } from '../types';
-import { Package, Clock, ShoppingBag, MessageSquare, Plus, DollarSign, TrendingUp, XCircle, CheckCircle, Tag } from 'lucide-react';
+import { Package, Clock, ShoppingBag, MessageSquare, Plus, DollarSign, TrendingUp, XCircle, CheckCircle, Tag, Camera, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { MamilaGallery, MamilaGalleryItem } from '../components/mamila/MamilaGallery';
 
 interface Props {
   inventory: Batch[];
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function MamilaView({ inventory, orders, onAddBatch, onUpdateBatch }: Props) {
+  const [activeTab, setActiveTab] = useState<'gallery' | 'inventory'>('gallery');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newBatchName, setNewBatchName] = useState('');
   const [newBatchDesc, setNewBatchDesc] = useState('');
@@ -27,6 +29,24 @@ export function MamilaView({ inventory, orders, onAddBatch, onUpdateBatch }: Pro
   const activeOrdersCount = orders.filter(
     o => o.status !== 'DELIVERED' && o.status !== 'RATED' && o.status !== 'CANCELLED' && o.status !== 'DEFECT_REJECTED'
   ).length;
+
+  const handleSelectGalleryBatch = (item: MamilaGalleryItem) => {
+    if (onAddBatch) {
+      onAddBatch({
+        mamilaId: item.mamilaId,
+        name: item.batchName,
+        description: `${item.grade} · ${item.notes}`,
+        price: item.pricePerUnit,
+        available: item.availableUnits,
+        expiry: `Today (Vault stamped ${item.timestamp})`,
+        category: item.category,
+        unit: item.unitLabel,
+        harvestTime: `Harvested ${item.timestamp} (${item.dateKey})`,
+        imageUrl: item.imageUrl,
+      });
+      setActiveTab('inventory');
+    }
+  };
 
   const handleCreateBatch = (e: FormEvent) => {
     e.preventDefault();
@@ -66,13 +86,32 @@ export function MamilaView({ inventory, orders, onAddBatch, onUpdateBatch }: Pro
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 bg-slate-900 text-white font-semibold text-xs md:text-sm rounded-xl hover:bg-slate-800 transition-colors shadow-xs flex items-center gap-2 cursor-pointer w-fit"
-        >
-          <Plus className="w-4 h-4" />
-          Create New Batch
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab(activeTab === 'gallery' ? 'inventory' : 'gallery')}
+            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
+          >
+            {activeTab === 'gallery' ? (
+              <>
+                <Package className="w-4 h-4 text-blue-600" />
+                Manage Stock ({inventory.length})
+              </>
+            ) : (
+              <>
+                <Camera className="w-4 h-4 text-emerald-600" />
+                Live Proof Vault
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 bg-slate-900 text-white font-semibold text-xs md:text-sm rounded-xl hover:bg-slate-800 transition-colors shadow-xs flex items-center gap-2 cursor-pointer w-fit"
+          >
+            <Plus className="w-4 h-4" />
+            Create New Batch
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -109,7 +148,51 @@ export function MamilaView({ inventory, orders, onAddBatch, onUpdateBatch }: Pro
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Primary Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+        <button
+          onClick={() => setActiveTab('gallery')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+            activeTab === 'gallery'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <Camera className="w-4 h-4 text-emerald-400" />
+          <span>Live Daily Batch Gallery</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
+            24h Vault
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+            activeTab === 'inventory'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <Package className="w-4 h-4 text-blue-400" />
+          <span>Active Batches & Orders</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 font-mono">
+            {inventory.length} Batches · {orders.length} Orders
+          </span>
+        </button>
+      </div>
+
+      {/* Tab 1: Live Daily Timestamped Batch Gallery */}
+      {activeTab === 'gallery' && (
+        <MamilaGallery 
+          currentMamilaId="m1"
+          allowUpload={true}
+          onBatchSelected={handleSelectGalleryBatch}
+        />
+      )}
+
+      {/* Tab 2: Inventory & Orders Manager */}
+      {activeTab === 'inventory' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left: Inventory Manager */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
           <div className="flex justify-between items-center pb-3 border-b border-slate-100">
@@ -234,6 +317,7 @@ export function MamilaView({ inventory, orders, onAddBatch, onUpdateBatch }: Pro
           </div>
         </div>
       </div>
+      )}
 
       {/* CREATE BATCH MODAL */}
       <AnimatePresence>
