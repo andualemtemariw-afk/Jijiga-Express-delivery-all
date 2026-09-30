@@ -5,11 +5,13 @@ import {
   onSnapshot, 
   getDocs, 
   query, 
+  where,
+  limit,
   orderBy, 
   serverTimestamp,
   Timestamp 
 } from 'firebase/firestore';
-import { db } from './googleAuth';
+import { auth, ensureAppUser, db } from './googleAuth';
 import { Order } from '../types';
 import { INITIAL_ORDERS } from '../data';
 
@@ -23,36 +25,33 @@ export function subscribeToFirestoreOrders(
   onOrdersUpdated: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ) {
-  try {
+  let unsubscribe = () => {};
+  let cancelled = false;
+
+  ensureAppUser().then((user) => {
+    if (cancelled) return;
     const ordersRef = collection(db, ORDERS_COLLECTION);
-    const q = query(ordersRef);
+    // Limit the live result set and never download another user's orders.
+    const q = query(
+      ordersRef,
+      where('customerId', '==', user.uid),
+      limit(50)
+    );
 
-    return onSnapshot(
+    unsubscribe = onSnapshot(
       q,
-      async (snapshot) => {
-        if (snapshot.empty) {
-          // Seed initial orders to Firestore so the user has immediate data
-          try {
-            await seedOrdersToFirestore(INITIAL_ORDERS);
-          } catch (seedErr) {
-            console.warn('Could not auto-seed Firestore orders:', seedErr);
-          }
-          onOrdersUpdated(INITIAL_ORDERS);
-          return;
-        }
-
+      (snapshot) => {
         const loadedOrders: Order[] = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
           return {
             ...data,
             id: docSnap.id,
-            createdAt: data.createdAt instanceof Timestamp 
-              ? data.createdAt.toDate() 
+            createdAt: data.createdAt instanceof Timestamp
+              ? data.createdAt.toDate()
               : new Date(data.createdAt || Date.now()),
           } as Order;
         });
 
-        // Sort by createdAt descending
         loadedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         onOrdersUpdated(loadedOrders);
       },
@@ -61,11 +60,15 @@ export function subscribeToFirestoreOrders(
         onError?.(err);
       }
     );
-  } catch (err: any) {
-    console.warn('Failed to initialize Firestore subscription:', err);
+  }).catch((err) => {
+    console.warn('Could not authenticate for Firestore sync:', err);
     onError?.(err);
-    return () => {};
-  }
+  });
+
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
 }
 
 /**
@@ -73,9 +76,12 @@ export function subscribeToFirestoreOrders(
  */
 export async function saveOrderToFirestore(order: Order): Promise<void> {
   try {
+    const user = await ensureAppUser();
     const docRef = doc(db, ORDERS_COLLECTION, order.id);
     const serializedOrder: any = {
       ...order,
+      // Never trust a browser-supplied owner ID for persisted data.
+      customerId: user.uid,
       createdAt: order.createdAt instanceof Date ? order.createdAt.toISOString() : order.createdAt,
       updatedAt: serverTimestamp(),
     };

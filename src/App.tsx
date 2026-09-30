@@ -12,6 +12,7 @@ import { MapPreviewModal } from './components/map/MapPreviewModal';
 import { UpdateApiKeyModal } from './components/map/UpdateApiKeyModal';
 import { GoogleDriveSyncModal } from './components/drive/GoogleDriveSyncModal';
 import { GmailNotificationModal } from './components/gmail/GmailNotificationModal';
+import { auth } from './services/googleAuth';
 import { subscribeToFirestoreOrders, saveOrderToFirestore } from './services/firestoreSync';
 import { MAMILA_COORDINATES, DEFAULT_CUSTOMER_COORDINATES } from './utils/geo';
 import { getNextEeuPhase, EEU_STATE_CHAIN } from './utils/eeuStateMachine';
@@ -40,7 +41,7 @@ export default function App() {
     return (
       import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
       localStorage.getItem('user_google_maps_api_key') ||
-      'AIzaSyB-lWP1UoMvnai0oxJpgzyquD3dmma99oU'
+      ''
     );
   });
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -308,7 +309,10 @@ export default function App() {
   };
 
   // --- Strict Data Isolation Filtering ---
-  const customerOrders = orders.filter(o => o.customerId === CURRENT_CUSTOMER_PROFILE.id);
+  const customerOrders = orders.filter(o =>
+    o.customerId === CURRENT_CUSTOMER_PROFILE.id ||
+    o.customerId === auth.currentUser?.uid
+  );
   const runnerOrders = orders.filter(o => o.runnerId === CURRENT_RUNNER_ID && o.status !== 'CANCELLED');
   const riderOrders = orders.filter(o => 
     o.status !== 'CANCELLED' && 

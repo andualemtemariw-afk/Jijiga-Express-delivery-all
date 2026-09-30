@@ -1,12 +1,14 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getAuth, 
+  connectAuthEmulator,
+  signInAnonymously,
   signInWithPopup, 
   GoogleAuthProvider, 
   onAuthStateChanged, 
   User 
 } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export const SCOPES = [
@@ -45,6 +47,14 @@ export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId || '(default)');
 
+export const usingFirebaseEmulators =
+  import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true';
+
+if (usingFirebaseEmulators) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
+
 const provider = new GoogleAuthProvider();
 // Add all requested Workspace scopes
 SCOPES.forEach((scope) => {
@@ -55,6 +65,16 @@ SCOPES.forEach((scope) => {
 let isSigningIn = false;
 // STRICT REQUIREMENT: In-memory caching for the access token only (never localStorage/sessionStorage)
 let cachedAccessToken: string | null = null;
+
+/**
+ * Ensures the app has an authenticated Firebase identity for Firestore.
+ * Anonymous Auth keeps the demo usable without exposing data publicly.
+ */
+export const ensureAppUser = async (): Promise<User> => {
+  if (auth.currentUser) return auth.currentUser;
+  const result = await signInAnonymously(auth);
+  return result.user;
+};
 
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
