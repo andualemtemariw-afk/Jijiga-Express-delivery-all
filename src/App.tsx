@@ -141,6 +141,12 @@ export default function App() {
     saveOrderToFirestore(fullOrder).catch((err) => console.warn('Firestore write notice:', err));
   };
 
+  const handleBookKhat = (khatOrder: Partial<Order>) => {
+    const fullOrder = khatOrder as Order;
+    setOrders(prev => [fullOrder, ...prev]);
+    saveOrderToFirestore(fullOrder).catch((err) => console.warn('Firestore write notice:', err));
+  };
+
   const handleUpdateOrder = (orderId: string, updates: Partial<Order>) => {
     setOrders(prev => {
       const next = prev.map(o => o.id === orderId ? { ...o, ...updates } : o);
@@ -420,6 +426,7 @@ export default function App() {
               onBookParcel={handleBookParcel}
               onBookRide={handleBookRide}
               onBookEeu={handleBookEeu}
+              onBookKhat={handleBookKhat}
             />
           )}
           {activeRole === 'MAMILA' && (

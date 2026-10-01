@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Batch, Order, PaymentMethod, ChatMessage } from '../types';
-import { CITIES } from '../data';
+import { CITIES, MAMILAS } from '../data';
 import { CURRENT_CUSTOMER_PROFILE } from '../App';
 import { OrderSearchFilterBar, OrderFilterState } from '../components/orders/OrderSearchFilterBar';
 import { extractAvailableCities, applyOrderFilters } from '../utils/orderFilterUtils';
@@ -35,7 +35,9 @@ import {
   Camera,
   Zap,
   HardDrive,
-  UploadCloud
+  UploadCloud,
+  MessageCircle,
+  Leaf
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { uploadOrderReceiptToDrive } from '../services/googleDrive';
@@ -43,9 +45,11 @@ import { getAccessToken, googleSignIn } from '../services/googleAuth';
 import { OrderMapPreview } from '../components/map/OrderMapPreview';
 import { DeliveryLocationPickerMap } from '../components/map/DeliveryLocationPickerMap';
 import { DeliveryRouteMapBanner } from '../components/map/DeliveryRouteMapBanner';
+import { WhatsAppDispatchModal } from '../components/communication/WhatsAppDispatchModal';
 import { BookParcelModal } from '../components/parcel/BookParcelModal';
 import { BookRideModal } from '../components/ride/BookRideModal';
 import { BookEeuModal } from '../components/eeu/BookEeuModal';
+import { KhatMarketplaceModal } from '../components/khat/KhatMarketplaceModal';
 import { EeuCustodyStepper } from '../components/eeu/EeuCustodyStepper';
 import { MamilaGallery, MamilaGalleryItem } from '../components/mamila/MamilaGallery';
 import { CommunicationBridgeModal } from '../components/communication/CommunicationBridgeModal';
@@ -77,6 +81,7 @@ interface Props {
   onBookParcel?: (order: Partial<Order>) => void;
   onBookRide?: (order: Partial<Order>) => void;
   onBookEeu?: (order: Partial<Order>) => void;
+  onBookKhat?: (order: Partial<Order>) => void;
 }
 
 type TabType = 'batches' | 'tracking' | 'history' | 'profile';
@@ -94,7 +99,8 @@ export function CustomerView({
   onOpenMapPreview,
   onBookParcel,
   onBookRide,
-  onBookEeu
+  onBookEeu,
+  onBookKhat,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('batches');
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
@@ -112,6 +118,7 @@ export function CustomerView({
   const [showBookParcelModal, setShowBookParcelModal] = useState(false);
   const [showBookRideModal, setShowBookRideModal] = useState(false);
   const [showBookEeuModal, setShowBookEeuModal] = useState(false);
+  const [showKhatModal, setShowKhatModal] = useState(false);
 
   // Batch display view mode: Standard Grid vs Live Mamila Photo Gallery
   const [batchDisplayMode, setBatchDisplayMode] = useState<'grid' | 'gallery'>('grid');
@@ -125,11 +132,12 @@ export function CustomerView({
   const [isProcessing, setIsProcessing] = useState(false);
   const [driveSaving, setDriveSaving] = useState(false);
   const [driveSaveSuccess, setDriveSaveSuccess] = useState<string | null>(null);
+  const [driveSaveError, setDriveSaveError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelToast, setCancelToast] = useState<string | null>(null);
   
   // History filters
-  const [historyServiceFilter, setHistoryServiceFilter] = useState<'ALL' | 'FOOD' | 'PARCEL' | 'RIDE' | 'EEU_RECHARGE'>('ALL');
+  const [historyServiceFilter, setHistoryServiceFilter] = useState<'ALL' | 'FOOD' | 'PARCEL' | 'RIDE' | 'EEU_RECHARGE' | 'KHAT'>('ALL');
   const [historyFilter, setHistoryFilter] = useState<'ALL' | 'DELIVERED' | 'ACTIVE' | 'CANCELLED' | 'DEFECT_REJECTED'>('ALL');
   const [customerOrderFilters, setCustomerOrderFilters] = useState<OrderFilterState>({
     searchQuery: '',
@@ -186,6 +194,7 @@ export function CustomerView({
     order: Order;
   } | null>(null);
   const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
+  const [whatsAppOrder, setWhatsAppOrder] = useState<Order | null>(null);
 
   // Active in-flight order
   const activeOrder = myOrders.find(
@@ -293,7 +302,7 @@ export function CustomerView({
   }, [inventory, searchQuery, categoryFilter]);
 
   // Categories list
-  const categories = ['ALL', 'Hotel & Restaurant', 'Fresh Farm Produce', 'Bakery & Pastries', 'Dairy & Eggs', 'Restaurant & Drinks'];
+  const categories = ['ALL', 'Khat Marketplace', 'Hotel & Restaurant', 'Fresh Farm Produce', 'Bakery & Pastries', 'Dairy & Eggs', 'Restaurant & Drinks'];
 
   // History filtering
   const filteredHistory = useMemo(() => {
@@ -429,7 +438,28 @@ export function CustomerView({
       </div>
 
       {/* Horn of Africa Multi-Service Super-App Banner (Walkthrough features) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div 
+          onClick={() => setShowKhatModal(true)}
+          className="p-3.5 bg-gradient-to-br from-emerald-500/15 via-emerald-50 to-teal-50 border-2 border-emerald-500/60 rounded-2xl flex items-center justify-between cursor-pointer hover:shadow-md transition-all ring-2 ring-emerald-500/15 relative overflow-hidden group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 to-teal-800 text-white flex items-center justify-center font-bold text-lg shadow-xs group-hover:scale-105 transition-transform">
+              🌿
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-black text-xs text-slate-900 tracking-tight">Khat Marketplace</span>
+                <span className="text-[9px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-full uppercase">
+                  New
+                </span>
+              </div>
+              <div className="text-[11px] text-emerald-800 font-medium line-clamp-1">Preferred Mamilas • Fresh Batches</div>
+            </div>
+          </div>
+          <span className="text-emerald-800 font-black text-xs">Open →</span>
+        </div>
+
         <div 
           onClick={() => setActiveTab('batches')}
           className="p-3.5 bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl flex items-center justify-between cursor-pointer hover:shadow-xs transition-all"
@@ -1362,7 +1392,7 @@ export function CustomerView({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xl">
-                          {order.serviceType === 'PARCEL' ? '📦' : order.serviceType === 'RIDE' ? '🚖' : '🍱'}
+                          {order.serviceType === 'KHAT' ? '🌿' : order.serviceType === 'PARCEL' ? '📦' : order.serviceType === 'RIDE' ? '🚖' : order.serviceType === 'EEU_RECHARGE' ? '⚡' : '🍱'}
                         </span>
                         <h4 className="font-bold text-slate-900 text-base">{order.batchName}</h4>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
@@ -1446,6 +1476,28 @@ export function CustomerView({
                     </div>
                   )}
 
+                  {/* Khat Marketplace Details display */}
+                  {order.khatDetails && (
+                    <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs space-y-1.5">
+                      <div className="flex items-center justify-between font-bold text-emerald-950">
+                        <span className="flex items-center gap-1.5">
+                          <Leaf className="w-4 h-4 text-emerald-600" />
+                          <span>Preferred Mamila: {order.khatDetails.mamilaName}</span>
+                        </span>
+                        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px]">
+                          {order.khatDetails.grade} • {order.khatDetails.origin}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
+                        <div><strong>Quantity:</strong> {order.khatDetails.bundlesCount} bundles ({order.khatDetails.bundleWrapType})</div>
+                        <div><strong>Landmark:</strong> {order.khatDetails.deliveryLandmark}</div>
+                      </div>
+                      {order.khatDetails.preferredMamilaCustomerNote && (
+                        <p className="text-emerald-800 italic">"Note for Mamila: {order.khatDetails.preferredMamilaCustomerNote}"</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Cooking Instruction (from walkthrough video at 01:04) */}
                   {order.cookingInstruction && (
                     <div className="text-xs bg-amber-50 p-2.5 rounded-lg border border-amber-200 text-amber-900 flex items-start gap-2">
@@ -1518,8 +1570,18 @@ export function CustomerView({
                     </div>
                   )}
 
-                  {/* Action Buttons for Delivered Orders */}
+                  {/* Action Buttons for Orders */}
                   <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setWhatsAppOrder(order)}
+                      className="px-3.5 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                      title="Share Order or Notify Courier via WhatsApp"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>WhatsApp Dispatch</span>
+                    </button>
+
                     {onOpenMapPreview && (
                       <button
                         onClick={() => onOpenMapPreview(order)}
@@ -1703,12 +1765,20 @@ export function CustomerView({
                 </div>
               )}
 
+              {driveSaveError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-medium text-center flex items-center justify-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{driveSaveError}</span>
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={async () => {
                     try {
                       setDriveSaving(true);
+                      setDriveSaveError(null);
                       let activeToken = await getAccessToken();
                       if (!activeToken) {
                         const res = await googleSignIn();
@@ -1720,7 +1790,8 @@ export function CustomerView({
                       setTimeout(() => setDriveSaveSuccess(null), 3500);
                     } catch (err: any) {
                       console.error('Drive save error:', err);
-                      alert(err.message || 'Could not archive to Google Drive');
+                      setDriveSaveError(err.message || 'Could not archive to Google Drive');
+                      setTimeout(() => setDriveSaveError(null), 5000);
                     } finally {
                       setDriveSaving(false);
                     }
@@ -1960,6 +2031,32 @@ export function CustomerView({
           onBookEeu?.(order);
           setActiveTab('tracking');
         }}
+      />
+
+      {/* NEW SERVICE A: KHAT MARKETPLACE MODAL (PRESERVE PREFERRED MAMILA RELATIONSHIP) */}
+      <KhatMarketplaceModal
+        isOpen={showKhatModal}
+        onClose={() => setShowKhatModal(false)}
+        mamilas={MAMILAS}
+        inventory={inventory}
+        customerProfile={{
+          name: CURRENT_CUSTOMER_PROFILE.name,
+          phone: CURRENT_CUSTOMER_PROFILE.phone,
+          city: selectedCity,
+          address: address,
+          plusCode: plusCode,
+        }}
+        onConfirmOrder={(order) => {
+          onBookKhat?.(order);
+          setActiveTab('tracking');
+        }}
+      />
+
+      {/* WHATSAPP DISPATCH & SHARE MODAL */}
+      <WhatsAppDispatchModal
+        isOpen={Boolean(whatsAppOrder)}
+        onClose={() => setWhatsAppOrder(null)}
+        order={whatsAppOrder}
       />
     </div>
   );

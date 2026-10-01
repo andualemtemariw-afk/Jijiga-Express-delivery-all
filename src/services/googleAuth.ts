@@ -81,12 +81,12 @@ export const initAuth = (
   onAuthFailure?: () => void
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
+    if (user && !user.isAnonymous) {
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
       } else if (!isSigningIn) {
-        // If user is logged into Firebase Auth but memory token was cleared (e.g. reload),
-        // we prompt sign in popup or allow re-auth
+        // If user is logged into Firebase Auth with Google but memory token was cleared (e.g. reload),
+        // notify that sign in popup or re-auth is needed
         if (onAuthFailure) onAuthFailure();
       }
     } else {
@@ -122,4 +122,6 @@ export const getAccessToken = async (): Promise<string | null> => {
 export const logout = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+  // Re-establish anonymous user identity for Firestore sync
+  await ensureAppUser().catch(() => {});
 };

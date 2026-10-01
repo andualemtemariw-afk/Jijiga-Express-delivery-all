@@ -31,20 +31,26 @@ export async function listDriveFiles(
   params.set('fields', 'nextPageToken, files(id, name, mimeType, createdTime, modifiedTime, size, webViewLink, iconLink)');
   params.set('orderBy', 'modifiedTime desc');
 
-  let queryParts: string[] = ['trashed = false'];
+  const queryParts: string[] = [];
+  if (!options?.q || !options.q.includes('trashed')) {
+    queryParts.push('trashed = false');
+  }
   if (options?.folderId) {
     queryParts.push(`'${options.folderId}' in parents`);
   }
   if (options?.q) {
     queryParts.push(options.q);
   }
-  params.set('q', queryParts.join(' and '));
+  if (queryParts.length > 0) {
+    params.set('q', queryParts.join(' and '));
+  }
 
+  // NOTE: On GET requests, do NOT set 'Content-Type: application/json'
+  // as it triggers an invalid CORS preflight check in browsers.
   const response = await fetch(`${DRIVE_API_BASE}/files?${params.toString()}`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
     },
   });
 
@@ -62,11 +68,15 @@ export async function listDriveFiles(
  */
 export async function getOrCreateReceiptsFolder(accessToken: string): Promise<string> {
   const folderName = 'Jijiga Express Delivery Receipts';
-  const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder'`;
 
-  const existingFolders = await listDriveFiles(accessToken, { q: query, pageSize: 1 });
-  if (existingFolders.length > 0) {
-    return existingFolders[0].id;
+  try {
+    const existingFolders = await listDriveFiles(accessToken, { q: query, pageSize: 1 });
+    if (existingFolders.length > 0) {
+      return existingFolders[0].id;
+    }
+  } catch (searchErr) {
+    console.warn('Folder search error in Google Drive:', searchErr);
   }
 
   // Create folder
@@ -84,7 +94,8 @@ export async function getOrCreateReceiptsFolder(accessToken: string): Promise<st
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create folder in Google Drive');
+    const errText = await response.text();
+    throw new Error(`Failed to create receipts folder in Google Drive (${response.status}): ${errText}`);
   }
 
   const created = await response.json();
@@ -98,7 +109,12 @@ export async function uploadOrderReceiptToDrive(
   accessToken: string,
   order: Order
 ): Promise<DriveFile> {
-  const folderId = await getOrCreateReceiptsFolder(accessToken);
+  let folderId: string | undefined;
+  try {
+    folderId = await getOrCreateReceiptsFolder(accessToken);
+  } catch (folderErr) {
+    console.warn('Could not ensure receipts folder, uploading directly to Drive root:', folderErr);
+  }
 
   const receiptContent = `===============================================================
            JIJIGA EXPRESS DELIVERY SERVICE - OFFICIAL RECEIPT
@@ -136,12 +152,14 @@ Verified by Jijiga Express Delivery Service • Regional Logistics Network
   const fileName = `Receipt_${order.id}_${order.customerCity || 'Jijiga'}.txt`;
 
   // Multipart upload to Google Drive
-  const metadata = {
+  const metadata: Record<string, any> = {
     name: fileName,
-    parents: [folderId],
     mimeType: 'text/plain',
     description: `Official delivery receipt for order ${order.id}`,
   };
+  if (folderId) {
+    metadata.parents = [folderId];
+  }
 
   const boundary = '-------314159265358979323846';
   const delimiter = `\r\n--${boundary}\r\n`;

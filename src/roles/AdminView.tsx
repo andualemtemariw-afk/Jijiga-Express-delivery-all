@@ -3,6 +3,7 @@ import { Order, Batch } from '../types';
 import { MAMILAS, CITIES } from '../data';
 import { OrderSearchFilterBar, OrderFilterState } from '../components/orders/OrderSearchFilterBar';
 import { extractAvailableCities, applyOrderFilters } from '../utils/orderFilterUtils';
+import { WhatsAppDispatchModal } from '../components/communication/WhatsAppDispatchModal';
 import { 
   Activity, 
   Package, 
@@ -20,6 +21,7 @@ import {
   RotateCcw,
   MapPin,
   MessageSquare,
+  MessageCircle,
   Search,
   Wallet,
   Truck,
@@ -158,6 +160,7 @@ export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPrevie
     startDate: '',
     endDate: '',
   });
+  const [whatsAppDispatchOrder, setWhatsAppDispatchOrder] = useState<Order | null>(null);
   const [visibleMamilas, setVisibleMamilas] = useState<Record<string, boolean>>({
     m1: true,
     m2: true,
@@ -644,6 +647,17 @@ export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPrevie
             </div>
             
             <div className="flex items-center gap-2">
+              {filteredDispatch.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setWhatsAppDispatchOrder(filteredDispatch[0])}
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer"
+                  title="Open WhatsApp Dispatch Console"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>WhatsApp Dispatch</span>
+                </button>
+              )}
               <span className="font-mono text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
                 {filteredDispatch.length} of {orders.length} displayed
               </span>
@@ -692,6 +706,14 @@ export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPrevie
                         }`}>
                           {order.status.replace(/_/g, ' ')}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => setWhatsAppDispatchOrder(order)}
+                          title="Dispatch via WhatsApp"
+                          className="p-1 rounded-md text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors cursor-pointer"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </button>
                         {onOpenMapPreview && (
                           <button
                             onClick={() => onOpenMapPreview(order)}
@@ -760,6 +782,13 @@ export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPrevie
           </div>
         </div>
       </div>
+
+      {/* WhatsApp Dispatch Modal */}
+      <WhatsAppDispatchModal
+        isOpen={Boolean(whatsAppDispatchOrder)}
+        onClose={() => setWhatsAppDispatchOrder(null)}
+        order={whatsAppDispatchOrder}
+      />
     </div>
   );
 }

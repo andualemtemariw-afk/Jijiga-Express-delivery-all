@@ -6,6 +6,7 @@ import {
   MapPin, 
   Phone, 
   MessageSquare, 
+  MessageCircle,
   DollarSign, 
   Calculator, 
   ShieldCheck, 
@@ -26,6 +27,7 @@ import {
 import { useState } from 'react';
 import { OrderMapPreview } from '../components/map/OrderMapPreview';
 import { CommunicationBridgeModal } from '../components/communication/CommunicationBridgeModal';
+import { WhatsAppDispatchModal } from '../components/communication/WhatsAppDispatchModal';
 import { EeuCustodyStepper } from '../components/eeu/EeuCustodyStepper';
 import { EEU_STATE_CHAIN, getNextEeuPhase, validateEeuTransition } from '../utils/eeuStateMachine';
 import { motion, AnimatePresence } from 'motion/react';
@@ -51,6 +53,7 @@ export function RiderView({
   const activeJobs = orders.filter(o => ['RIDER_ACCEPTED', 'PICKED_UP'].includes(o.status) && o.riderId === currentRiderId);
   const [dialedPhone, setDialedPhone] = useState<string | null>(null);
   const [activeChatOrder, setActiveChatOrder] = useState<Order | null>(null);
+  const [whatsAppOrder, setWhatsAppOrder] = useState<Order | null>(null);
   const [collapsedMaps, setCollapsedMaps] = useState<Record<string, boolean>>({});
   const [quickPillFeedback, setQuickPillFeedback] = useState<Record<string, string>>({});
 
@@ -241,6 +244,15 @@ export function RiderView({
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
                           Chat & Voice ({((orderMessages && orderMessages[order.id]) || []).length})
+                        </button>
+
+                        <button
+                          onClick={() => setWhatsAppOrder(order)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-lg text-emerald-800 font-bold hover:bg-emerald-100 transition-colors text-xs cursor-pointer shadow-2xs"
+                          title="Open WhatsApp with Customer or Store"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          WhatsApp
                         </button>
 
                         <button
@@ -653,6 +665,13 @@ export function RiderView({
           </div>
         )}
       </AnimatePresence>
+
+      {/* WhatsApp Dispatch Modal for Rider */}
+      <WhatsAppDispatchModal
+        isOpen={Boolean(whatsAppOrder)}
+        onClose={() => setWhatsAppOrder(null)}
+        order={whatsAppOrder}
+      />
     </div>
   );
 }

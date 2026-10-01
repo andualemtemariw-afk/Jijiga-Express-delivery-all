@@ -1,6 +1,6 @@
 export type Role = 'CUSTOMER' | 'MAMILA' | 'RUNNER' | 'RIDER' | 'ADMIN';
 
-export type ServiceType = 'FOOD' | 'PARCEL' | 'RIDE' | 'EEU_RECHARGE';
+export type ServiceType = 'FOOD' | 'PARCEL' | 'RIDE' | 'EEU_RECHARGE' | 'KHAT';
 
 export type PaymentMethod = 
   | 'TELEBIRR' 
@@ -60,7 +60,12 @@ export interface Mamila {
   plusCode: string;
   phone?: string;
   coordinates?: { lat: number; lng: number };
-  category?: 'Farm & Grocer' | 'Hotel & Restaurant' | 'Bakery & Sweets' | 'Dairy';
+  category?: 'Farm & Grocer' | 'Hotel & Restaurant' | 'Bakery & Sweets' | 'Dairy' | 'Khat Vendor (Mamila)';
+  khatSpecialty?: string;
+  dailyArrivalTime?: string;
+  trustedBadges?: string[];
+  stallNumber?: string;
+  verifiedDirectFarm?: boolean;
 }
 
 export interface Batch {
@@ -75,6 +80,21 @@ export interface Batch {
   category?: string;
   unit?: string;
   harvestTime?: string;
+  khatGrade?: 'Abo Mismar (Prime)' | 'Urji Fresh Leaf' | 'Gelemso Special' | 'Harari Behati' | 'Gursum Gold';
+  leafMoisture?: string;
+  bundleWrapType?: 'Fresh Banana Leaf' | 'Traditional Palm Fiber' | 'Moist Burlap Wrap';
+}
+
+export interface KhatOrderDetails {
+  mamilaId: string;
+  mamilaName: string;
+  grade: string;
+  origin: string;
+  arrivalBatchTime: string;
+  bundlesCount: number;
+  bundleWrapType: string;
+  deliveryLandmark: string;
+  preferredMamilaCustomerNote?: string;
 }
 
 export interface Dispute {
@@ -145,6 +165,7 @@ export interface Order {
   parcelDetails?: ParcelDetails;
   rideDetails?: RideDetails;
   eeuDetails?: EeuRechargeDetails;
+  khatDetails?: KhatOrderDetails;
   runnerId?: string;
   runnerName?: string;
   runnerTagId?: string;

@@ -62,7 +62,9 @@ export function GoogleDriveSyncModal({
       (currentUser, currentToken) => {
         setUser(currentUser);
         setToken(currentToken);
-        loadFiles(currentToken);
+        if (currentToken) {
+          loadFiles(currentToken);
+        }
       },
       () => {
         // Not authenticated
@@ -73,15 +75,34 @@ export function GoogleDriveSyncModal({
   }, [isOpen]);
 
   const loadFiles = async (accessToken: string) => {
+    if (!accessToken) return;
     setIsLoadingFiles(true);
     setErrorMessage(null);
     try {
-      const folderId = await getOrCreateReceiptsFolder(accessToken);
-      const fetched = await listDriveFiles(accessToken, { folderId, pageSize: 30 });
+      let folderId: string | undefined;
+      try {
+        folderId = await getOrCreateReceiptsFolder(accessToken);
+      } catch (folderErr) {
+        console.warn('Receipts folder access notice, fetching files directly:', folderErr);
+      }
+      const fetched = await listDriveFiles(
+        accessToken, 
+        folderId ? { folderId, pageSize: 30 } : { pageSize: 30 }
+      );
       setFiles(fetched);
     } catch (err: any) {
       console.error('Error fetching Google Drive files:', err);
-      setErrorMessage(err.message || 'Failed to load files from Google Drive');
+      const isNetworkOrAuth = 
+        err?.message?.toLowerCase().includes('failed to fetch') || 
+        err?.name === 'TypeError';
+
+      if (isNetworkOrAuth) {
+        setErrorMessage(
+          'Could not connect to Google Drive API. Your session token may have expired or network is unreachable. Please click "Sign in with Google" below to refresh.'
+        );
+      } else {
+        setErrorMessage(err.message || 'Failed to load files from Google Drive');
+      }
     } finally {
       setIsLoadingFiles(false);
     }

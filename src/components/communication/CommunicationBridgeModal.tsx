@@ -32,9 +32,17 @@ import {
   Hash, 
   Smartphone, 
   FileText,
-  AlertCircle
+  AlertCircle,
+  MessageCircle,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  createWhatsAppUrl, 
+  generateRiderDispatchMessage, 
+  generateCustomerUpdateMessage,
+  formatPhoneForWhatsApp 
+} from '../../utils/whatsappDispatch';
 
 interface Props {
   isOpen: boolean;
@@ -48,7 +56,7 @@ interface Props {
   onSendMessage: (orderId: string, message: Omit<ChatMessage, 'id' | 'orderId'>) => void;
 }
 
-type ModalTab = 'chat' | 'call' | 'sms' | 'ussd';
+type ModalTab = 'chat' | 'whatsapp' | 'call' | 'sms' | 'ussd';
 
 export function CommunicationBridgeModal({
   isOpen,
@@ -294,6 +302,18 @@ export function CommunicationBridgeModal({
               <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
               <span>Vernacular Chat & Voice</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            </button>
+
+            <button
+              onClick={() => setActiveTab('whatsapp')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                activeTab === 'whatsapp' 
+                  ? 'bg-emerald-600 text-white shadow-xs' 
+                  : 'text-emerald-700 hover:text-emerald-900 bg-emerald-50'
+              }`}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>WhatsApp Dispatch</span>
             </button>
 
             <button
@@ -585,7 +605,70 @@ export function CommunicationBridgeModal({
           </div>
         )}
 
-        {/* TAB 2: ENCRYPTED CALL RELAY */}
+        {/* TAB 2: WHATSAPP DIRECT DISPATCH */}
+        {activeTab === 'whatsapp' && (
+          <div className="p-6 space-y-5 bg-slate-50 flex-1 overflow-y-auto">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3.5">
+              <MessageCircle className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-sm text-emerald-950">WhatsApp Courier & Dispatch Bridge</h4>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  Send live order details, delivery Plus Codes, and payment notes directly to {targetName}'s WhatsApp (+{formatPhoneForWhatsApp(targetPhone)}).
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-700">Recipient Phone (WhatsApp):</span>
+                <span className="font-mono text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  +{formatPhoneForWhatsApp(targetPhone)}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 block">Pre-formatted Dispatch Message:</label>
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto border-l-4 border-l-emerald-500">
+                  {targetRole === 'RIDER' 
+                    ? generateRiderDispatchMessage(order) 
+                    : generateCustomerUpdateMessage(order, 'arriving')}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = targetRole === 'RIDER' ? generateRiderDispatchMessage(order) : generateCustomerUpdateMessage(order, 'arriving');
+                    navigator.clipboard.writeText(text);
+                    setCopiedKey('wa_modal_msg');
+                    setTimeout(() => setCopiedKey(null), 2000);
+                  }}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 flex-1"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{copiedKey === 'wa_modal_msg' ? 'Copied to Clipboard!' : 'Copy Dispatch Text'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = targetRole === 'RIDER' ? generateRiderDispatchMessage(order) : generateCustomerUpdateMessage(order, 'arriving');
+                    const url = createWhatsAppUrl(targetPhone, text);
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2 flex-1"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Launch WhatsApp (+{formatPhoneForWhatsApp(targetPhone)})</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-emerald-200" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: ENCRYPTED CALL RELAY */}
         {activeTab === 'call' && (
           <div className="p-6 space-y-6 bg-slate-50 flex-1">
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3.5">
