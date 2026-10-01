@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { Batch, Order, PaymentMethod, ChatMessage } from '../types';
 import { CITIES } from '../data';
 import { CURRENT_CUSTOMER_PROFILE } from '../App';
+import { OrderSearchFilterBar, OrderFilterState } from '../components/orders/OrderSearchFilterBar';
+import { extractAvailableCities, applyOrderFilters } from '../utils/orderFilterUtils';
 import { 
   MapPin, 
   Clock, 
@@ -129,6 +131,26 @@ export function CustomerView({
   // History filters
   const [historyServiceFilter, setHistoryServiceFilter] = useState<'ALL' | 'FOOD' | 'PARCEL' | 'RIDE' | 'EEU_RECHARGE'>('ALL');
   const [historyFilter, setHistoryFilter] = useState<'ALL' | 'DELIVERED' | 'ACTIVE' | 'CANCELLED' | 'DEFECT_REJECTED'>('ALL');
+  const [customerOrderFilters, setCustomerOrderFilters] = useState<OrderFilterState>({
+    searchQuery: '',
+    status: 'ALL',
+    city: 'ALL',
+    startDate: '',
+    endDate: '',
+  });
+
+  const availableCustomerCities = useMemo(() => extractAvailableCities(myOrders), [myOrders]);
+
+  const handleResetCustomerFilters = () => {
+    setCustomerOrderFilters({
+      searchQuery: '',
+      status: 'ALL',
+      city: 'ALL',
+      startDate: '',
+      endDate: '',
+    });
+    setHistoryServiceFilter('ALL');
+  };
 
   const handleSelectFromGallery = (galleryItem: MamilaGalleryItem) => {
     const matching = inventory.find(b => b.name === galleryItem.batchName) || {
@@ -274,21 +296,16 @@ export function CustomerView({
   const categories = ['ALL', 'Hotel & Restaurant', 'Fresh Farm Produce', 'Bakery & Pastries', 'Dairy & Eggs', 'Restaurant & Drinks'];
 
   // History filtering
-  const filteredHistory = myOrders.filter(o => {
-    // Service type filter
+  const filteredHistory = useMemo(() => {
+    let result = applyOrderFilters(myOrders, customerOrderFilters);
+
+    // Also filter by service type if selected
     if (historyServiceFilter !== 'ALL') {
-      const sType = o.serviceType || 'FOOD';
-      if (sType !== historyServiceFilter) return false;
+      result = result.filter(o => (o.serviceType || 'FOOD') === historyServiceFilter);
     }
 
-    // Status filter
-    if (historyFilter === 'ALL') return true;
-    if (historyFilter === 'DELIVERED') return o.status === 'DELIVERED' || o.status === 'RATED';
-    if (historyFilter === 'ACTIVE') return o.status !== 'DELIVERED' && o.status !== 'RATED' && o.status !== 'CANCELLED' && o.status !== 'DEFECT_REJECTED';
-    if (historyFilter === 'CANCELLED') return o.status === 'CANCELLED';
-    if (historyFilter === 'DEFECT_REJECTED') return o.status === 'DEFECT_REJECTED';
-    return true;
-  });
+    return result;
+  }, [myOrders, customerOrderFilters, historyServiceFilter]);
 
   return (
     <div className="space-y-6">
@@ -1288,61 +1305,55 @@ export function CustomerView({
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900">Delivery & Order History</h2>
-              <p className="text-slate-500 text-xs">Past orders, parcel tracking, rides, dispute claims & receipts.</p>
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Delivery & Order History</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-xs">Past orders, parcel tracking, rides, dispute claims & receipts.</p>
             </div>
 
-            {/* Service & Status Filter Segmented Controls (from walkthrough video) */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex bg-slate-200/80 p-1 rounded-xl text-xs font-semibold overflow-x-auto">
-                {[
-                  { id: 'ALL', label: 'All Services' },
-                  { id: 'FOOD', label: 'Food & Groceries' },
-                  { id: 'PARCEL', label: 'Express Parcels' },
-                  { id: 'RIDE', label: 'Rides' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setHistoryServiceFilter(tab.id as any)}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                      historyServiceFilter === tab.id
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-700 hover:text-slate-900'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold overflow-x-auto">
-                {[
-                  { id: 'ALL', label: 'All Status' },
-                  { id: 'DELIVERED', label: 'Delivered' },
-                  { id: 'ACTIVE', label: 'In Transit' },
-                  { id: 'CANCELLED', label: 'Cancelled' },
-                  { id: 'DEFECT_REJECTED', label: 'Declined' },
-                ].map(filter => (
-                  <button
-                    key={filter.id}
-                    onClick={() => setHistoryFilter(filter.id as any)}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                      historyFilter === filter.id
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
+            {/* Service Filter Segmented Control */}
+            <div className="flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold overflow-x-auto">
+              {[
+                { id: 'ALL', label: 'All Services' },
+                { id: 'FOOD', label: 'Food & Groceries' },
+                { id: 'PARCEL', label: 'Express Parcels' },
+                { id: 'RIDE', label: 'Rides' },
+                { id: 'EEU_RECHARGE', label: 'EEU Recharge' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setHistoryServiceFilter(tab.id as any)}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    historyServiceFilter === tab.id
+                      ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
 
+          {/* Customer Search & Filter Bar */}
+          <OrderSearchFilterBar
+            filters={customerOrderFilters}
+            onFilterChange={(newF) => setCustomerOrderFilters(prev => ({ ...prev, ...newF }))}
+            onReset={handleResetCustomerFilters}
+            availableCities={availableCustomerCities}
+            totalOrders={myOrders.length}
+            filteredOrdersCount={filteredHistory.length}
+            title="Search Your Orders & Deliveries"
+          />
+
           <div className="space-y-4">
             {filteredHistory.length === 0 ? (
-              <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-500">
-                No orders found under this filter combination.
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center text-slate-500 dark:text-slate-400 space-y-2">
+                <p className="font-semibold text-sm">No orders found matching your search or filters.</p>
+                <button
+                  onClick={handleResetCustomerFilters}
+                  className="px-4 py-2 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold text-xs rounded-xl border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors cursor-pointer"
+                >
+                  Clear All Filters
+                </button>
               </div>
             ) : (
               filteredHistory.map(order => (

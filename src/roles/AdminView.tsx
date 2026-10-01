@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Order, Batch } from '../types';
 import { MAMILAS, CITIES } from '../data';
+import { OrderSearchFilterBar, OrderFilterState } from '../components/orders/OrderSearchFilterBar';
+import { extractAvailableCities, applyOrderFilters } from '../utils/orderFilterUtils';
 import { 
   Activity, 
   Package, 
@@ -149,12 +151,30 @@ const TotalsTooltip = ({ active, payload }: CustomTooltipProps) => {
 
 export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPreview }: Props) {
   const [viewMode, setChartViewMode] = useState<ChartViewMode>('grouped');
-  const [searchDispatch, setSearchDispatch] = useState('');
+  const [orderFilters, setOrderFilters] = useState<OrderFilterState>({
+    searchQuery: '',
+    status: 'ALL',
+    city: 'ALL',
+    startDate: '',
+    endDate: '',
+  });
   const [visibleMamilas, setVisibleMamilas] = useState<Record<string, boolean>>({
     m1: true,
     m2: true,
     m3: true,
   });
+
+  const availableCities = useMemo(() => extractAvailableCities(orders), [orders]);
+
+  const handleResetFilters = () => {
+    setOrderFilters({
+      searchQuery: '',
+      status: 'ALL',
+      city: 'ALL',
+      startDate: '',
+      endDate: '',
+    });
+  };
 
   const activeOrders = orders.filter(
     o => o.status !== 'DELIVERED' && o.status !== 'RATED' && o.status !== 'CANCELLED' && o.status !== 'DEFECT_REJECTED'
@@ -272,14 +292,8 @@ export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPrevie
 
   // Filtered dispatch orders
   const filteredDispatch = useMemo(() => {
-    if (!searchDispatch.trim()) return orders;
-    return orders.filter(o => 
-      o.id.toLowerCase().includes(searchDispatch.toLowerCase()) ||
-      o.batchName.toLowerCase().includes(searchDispatch.toLowerCase()) ||
-      o.customerName.toLowerCase().includes(searchDispatch.toLowerCase()) ||
-      (o.customerCity || '').toLowerCase().includes(searchDispatch.toLowerCase())
-    );
-  }, [orders, searchDispatch]);
+    return applyOrderFilters(orders, orderFilters);
+  }, [orders, orderFilters]);
 
   const toggleMamilaVisibility = (mamilaId: string) => {
     setVisibleMamilas(prev => ({
@@ -609,6 +623,17 @@ export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPrevie
         </div>
       )}
 
+      {/* Admin Order Search & Filter Control Bar */}
+      <OrderSearchFilterBar
+        filters={orderFilters}
+        onFilterChange={(newF) => setOrderFilters(prev => ({ ...prev, ...newF }))}
+        onReset={handleResetFilters}
+        availableCities={availableCities}
+        totalOrders={orders.length}
+        filteredOrdersCount={filteredDispatch.length}
+        title="Admin Central Dispatch Search & Filter"
+      />
+
       {/* Bottom Data Tables: Dispatch and Inventory */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -618,15 +643,10 @@ export function AdminView({ orders, inventory, onResolveDispute, onOpenMapPrevie
               <p className="text-xs text-slate-500">All registered customer orders in platform</p>
             </div>
             
-            <div className="relative w-48">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchDispatch}
-                onChange={(e) => setSearchDispatch(e.target.value)}
-                placeholder="Filter dispatch..."
-                className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
-              />
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+                {filteredDispatch.length} of {orders.length} displayed
+              </span>
             </div>
           </div>
           <div className="p-0 max-h-96 overflow-y-auto">
