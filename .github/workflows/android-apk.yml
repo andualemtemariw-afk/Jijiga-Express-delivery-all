@@ -1,8 +1,11 @@
+
 name: Build Android APK
 
 on:
   workflow_dispatch:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
 
 jobs:
@@ -20,13 +23,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build Vite web app
-        run: npm run build
+        run: bun run build
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -41,10 +46,10 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
       - name: Create Capacitor Android project
-        run: npx cap add android
+        run: bunx cap add android
 
       - name: Sync web app into Android project
-        run: npx cap sync android
+        run: bunx cap sync android
 
       - name: Build debug APK
         working-directory: android
